@@ -1,0 +1,193 @@
+---
+title: "Data Wrangling Class Notes"
+author: "Erich Denk"
+date: "February 4, 2019"
+output: pdf_document
+---
+
+#Wrangling
+90% of data science is data wrangling; including manipulating, piping, joining, reshaping.
+
+##What is Wrangling?
+The process of transforming from one format to another. 
+Converting the structure to facilitate some analysis
+  -altering the unit of analysis
+  -changing from a wide to a long structure
+  -summarizing data across subgroups
+
+Data rarely works out of the box. Sometimes contructed for a different purpose. Requires adding additional information.
+
+Codebooks offer clues but not the story. Pay attention to what is actually there.
+
+When you think about Data Generation, consider `data provenance` and `automated data`. Who is touching the data, don't ever assume that an automated process was foolproof..
+
+Almost everything you need to use is in the tidyverse.
+`readr` for reading data in
+`tibble` for tidy data structures
+`dplyr` for data manipulation
+`ggplot2` for visualization
+`tidyr` for cleaning
+`purrr` for funtional programming toolkit
+
+```{r}
+library(tidyverse)
+
+```
+
+##Tidy Data
+
+The philosophy of the tidyverse. Basically, data can be presented in a lot of different ways that say the same thing. But really we want things in our basic row column format. For things to be tidy:
+  1. Each variable must have its own column
+  2. Each observation must have its own row
+  3. Each value has its own cell
+
+Tibble() data frames. They are data frames but they tweak some older behaviors to make life easier. They just have better features...
+
+The main differences between the `tibbles` and `data.frames`.
+  1. Tibbles have a refined print method that shows only the first 1 rows and all columns that fit on the screen.
+  2. Tibbles are strict. they throw lots of errors that we can catch early. 
+
+
+##Manipulating
+
+The `dplyr` package offers an intuitive verb based approach to data management in R.
+  - grammar of data manipulation or data visualization
+  - all about intuitive naming convention to data management tasks
+
+There are 6 main `dplyr verbs`
+- select, filter, arrange, mutate, summarise, groupby
+
+They all work similarly.
+  1. The first argument is a data frame
+  2. The subsequent arguments say what to do with the data frame
+  3. Result is new data frame
+  
+###Select
+Lets take a look using some built in data
+```{r}
+?presidential
+dat <- presidential
+head(dat)
+```
+
+Say we just want the name and the party of the presidents
+```{r}
+select(dat, name, party)
+```
+
+We can also get all variables in between name and end.  Like a range of variables
+```{r}
+select(dat, name:end)
+```
+Note that we don't need to put quotations around the variable names. Which we can do 
+The order by which you specify data is helpful in organizing you can also rename simultaneously.
+
+```{r}
+select(dat, president = name, 
+       startdate = start,
+       enddate = end)
+```
+
+You can also use negate - to drop the variables you don't want...
+
+###Filter
+We can use boolean concepts to figure things out and filter to just data we want to see or not to see. 
+```{r}
+filter(dat, party == "Republican")
+```
+
+###Arrange
+Does what you think it would . You can put things in the order that you want.  STATA does it too. 
+```{r}
+arrange(dat, party)
+
+arrange(dat, desc(start))
+
+```
+
+###Mutate
+A key use. Make new variables. Cold War official start date variable.
+```{r}
+dat <- mutate(dat, CW = start <='1990-03-11',
+       CW = as.numeric(CW))
+
+#Or you can also only see the variables that you created.
+transmute(dat, CW = start <= '1990-03-11',
+          CW = as.numeric(CW))
+```
+
+###Summarize Data
+```{r}
+summarize(presidential,
+          days_in_office = mean(end-start),
+          max = max(end-start),
+          min = min(end-start))
+```
+
+###Grouping by Variable Characteristics
+group_by is incredibly helpful. you can have "good" and "bad" groups. 
+So we have some grouping variable we want to group by. Under the hood it will create a way to separate them.
+```{r}
+#group by party
+x <- group_by(dat, party)
+summarize(x,min_in_office = min(end-start))
+```
+
+###Other functions in the tidyverse
+tally() or count() offers quick counts of variables which can be helpful
+
+recode() works inside mutate to create a new variable. Say switch to 0,1 binary 
+```{r}
+mutate(dat, party = recode(party, 'Republican' = 1, 'Democratic'=0))
+```
+And so much more!
+sample_n() grab an N random sample of your data
+sample_frac() grab a random fraction
+top_n get the top N number of entries
+slice() grab sepcific row ranges
+glimpse() quick preview of the data
+
+##Piping
+Think about how we could combine `dplyr` functions. So we might want to do a series of things
+```{r}
+x <- filter(presidential, party=='Republican')
+x <-  group_by(x,name)
+x <- transmute(x,t_in_office = end- start)
+x <- arrange(x,t_in_office)
+```
+Or we could nest everything together in nests, but you have to read inside out. Instead we can use the pipe. Data goes in and new comes out
+
+```{r}
+dat%>%
+  filter(party=='Republican') %>%
+  group_by(name) %>%
+  transmute(t_in_office = end-start) %>%
+  arrange(t_in_office)
+```
+
+Two things to keep in mind when piping ctrl + shift + m
+  1. Functions must be linked with %>%
+  2. When functions have multiple arguments, point to where the data should go with a period (.)
+  
+##Joining
+This provides an SQL framework that is easier to read and more efficient.
+_join is the unifying verb in a range of ways to combine them
+  - left_join()
+  - right_join() 
+  - inner_join() keeps only those that match
+  - full_join() good for keeping all the data and combining where it fits
+  - anti_join() good for finding the unique observations that are specific to one dataset
+Class presentation has a great visualization of these five types of joins. 
+
+bind_rows() you want to stack them ontop of each other. Creates columns of NA for where it doesn't work for you. Also, can work for multiple datasets. 
+
+bind_cols() doesn't have as much use. 
+
+There's also set theory uses but they aren't that helpful
+
+##Reshaping
+tidyr is used to reshape data. It eases dropping missing values, filling missing values, and separating columns into rows. Like you did for your thesis.
+
+The two main ones we will use include `gather()` and `spread()`
+  - gather moves from wide to long
+  - spread moves from long to wide
