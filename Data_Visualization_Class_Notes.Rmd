@@ -37,6 +37,8 @@ There are four underlying components:
 Let's look at them using the built in diamond grou
   
 ```{r}
+require(dplyr)
+require(ggplot2)
 glimpse(diamonds)
 ```
 The big trick is the mapping. What variable makes up the y axis and x axis? Do we want to group any. You _must_ use the `aes()` function to wrap it.
@@ -120,14 +122,10 @@ See a table for how. Make sure you keep the punctuation consistent from how date
 
 `lubridate` a tidyverse like package that you can use to make things a lot easier.
 
-```{r}
-install.packages("lubridate")
-require(lubridate)
-```
-
 You can also use lubridate for more complex functions. Easier to use than to look up the syntax of how to specfy each date. 
 
 ```{r}
+require(lubridate)
 mdy(example)
 
 ```
