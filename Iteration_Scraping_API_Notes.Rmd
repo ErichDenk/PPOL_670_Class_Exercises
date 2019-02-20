@@ -1,0 +1,287 @@
+---
+title: "APIS and Web Scraping Class Notes"
+output: pdf_document
+---
+
+#Loops and Functions, the benefits of iteration
+
+We are going to use the indexed position of any object to gather information from it. First, we create just a basic step
+
+```{r}
+x <- 1:10
+x
+```
+
+WE can recall indexing. We have some examples
+```{r}
+x[1]
+x[10]
+x[11]
+```
+
+But we shouldn't get NA. We want bad things to happen so we can easily debug
+
+```{r}
+letters
+
+letters[10]
+
+```
+
+We can concatanate together as well. 
+
+```{r}
+letters[c(10,2,5,1,2)]
+```
+
+But we can call these in a different way. You can write a for loop. ITs a special function with special behavior. 
+You need a vector that we are pulling from and a call.
+
+```{r}
+items <- 1:10
+
+
+items <- c("cat","dog","moose")
+
+for( i in items){
+  print(i)
+}
+
+#Equivalent to
+i <- items[1]
+i <- items[2]
+i <- items[3]
+
+```
+
+We are using `i` as a temporary object for each iteration. A pointer in a way. The two brackets are part of the iteration. We repeat this chunk of code over and over again. 
+
+We can think about building up an object
+
+```{r}
+items <- 1:100
+container <- rep(0,100)
+q <- 0
+for( i in items){
+  container[i] <- i^q
+  q <- i
+}
+container
+
+```
+
+Here we create a container, then iterate through and store our new variables into the container. 
+
+We can also create a varaible where we can use the paste function to concatanate
+
+```{r}
+paste0("id_",i)
+
+for(i in items){
+  print(paste0("id_",i))
+}
+```
+
+Let's look at our in house cars varaible. 
+
+```{r}
+dim(mtcars)
+```
+
+WE can index data frames too. Pulling out each row, the first four observations
+
+```{r}
+for(i in 1:nrow(mtcars)){
+  print(mtcars[i,1:4])
+}
+```
+
+We really want to think about what the containers are doing. 
+
+#Building a Function
+
+```{r}
+x <- rnorm(10)
+x
+
+mean(x)
+
+#There are both functions. But we can create our own
+
+my_func <- function(x){
+  new_val <- x*x
+  return(new_val)
+}
+
+my_func2 <- function(x,y,z){
+  (x*y)/z
+}
+
+my_func(4)
+my_func2(4,5,6)
+
+```
+
+Store code in the same way as you would in a for loop. {} give the code. We just need arguments that we are passing to it. () are like ingredients. Egg Butter Flour. The function will output cake.
+
+You want to write functions whenver you need to copy and paste more than three times. 
+
+#So you wanna scrap the web...
+
+To scrape off the web:
+  - leveraging the structure of a website to grab its contents
+  - using a programming environment to systematically extract      that content.
+  - accomplishing the above in an "unobtrusive" and legal way.
+  
+Don't scrap instagram if you ever want to use it again...
+
+Crawlers finds urls on a website, find it and then go to that website.
+
+If you think very carefully what you are doing. Hold true to terms of service.
+
+There are five types of coding playing out when rendering a website.
+  - HTML - generates content of a website
+  - XML - webpage to server
+  - PHP -  information between serve and page (think passwords)
+  - CSS - design 
+  - JavaScript - not scrapable
+  
+When scraping we primarily care about XML and CSS
+
+There are a few tags that help for us to tell what we want
+p - paragraphs
+a href -link 
+div - divisions
+h - headings
+table - tables
+
+we need a bunch of packages. 
+```{r}
+require(rvest)
+require(tidyverse)
+
+```
+
+Basically, there is a really easy way to extract the structure fo a website via their HTML code.
+
+THere is the recipe:
+1. Identify the info you want 
+2. exmaine the HTML structure and elements
+3. Download the website
+4. Extract the element (i.e. its position)
+5. Clean Element
+6. Store Element
+
+```{r}
+url = "http://www.bbc.com/news/world-middle-east-36156865"
+site = read_html(url)
+site
+
+headline.path = "//*[@id='page']/div[1]/div[2]/div/div[1]/div[1]/h1"
+headline = site %>% html_node(.,xpath = headline.path)
+headline
+
+headline = headline %>% html_text(.)
+headline
+```
+
+```{r}
+site %>% 
+  html_node(.,xpath = headline.path) %>% 
+  html_name(.)
+
+site %>% 
+  html_node(.,xpath = headline.path) %>% 
+  html_attrs(.)
+
+site %>% 
+  html_node(.,xpath = headline.path) %>% 
+  html_structure(.)
+```
+#Building a Scraper
+What we basically just did is having the blueprint of the HTML strucutre, you can easily find your way around.
+
+We can systematically use the information we know about the HTML structure to grab new information with ease. 
+
+This allows us to draw similar infomration from similarly composed html pages. But you don't want to write a scraper for every single type of website structure. But having different types of scrapers is really a problem. But HTML structure changes over time and across websites. 
+
+##Building the BBC Scraper. URLS go in... Data Frames come out
+
+```{r}
+bbc_scraper <- function(url){
+  # Download website   
+  raw = read_html(url)
+  # Extract headline
+  headline = raw %>% 
+    html_nodes(.,xpath="//*[@id='page']/div[1]/div[2]/div/div[1]/div[1]/h1") %>% 
+    html_text(.)
+  # Extract data
+  date = raw %>% 
+    html_nodes(.,xpath="//*[@id='page']/div[1]/div[2]/div/div[1]/div[1]/div[1]/div/div[1]/div[1]/ul/li/div") %>% 
+    html_text(.) %>% as.Date(.,"%d %b %Y")
+  # Extract Story
+  story = raw %>% 
+    html_nodes(.,xpath="//*[@id='page']/div[1]/div[2]/div/div[1]/div[1]/div[2]/p") %>% 
+    html_text(.) %>% paste0(.,collapse = " ")
+  # Output as data frame and return
+  data.out = data.frame(headline,date,story)
+  return(data.out)
+}
+
+```
+
+Now all we need is to feed it URLS!!!! 
+
+```{r}
+urls <- c("http://www.bbc.com/news/world-middle-east-36156865",
+          "http://www.bbc.com/news/world-middle-east-36162701",
+          "http://www.bbc.com/news/world-australia-36166803",
+          "http://www.bbc.com/news/world-latin-america-36166632")
+
+output <- c()
+for(i in 1:length(urls)){
+  draw <- bbc_scraper(urls[i])  
+  output <- bind_rows(output,draw)
+  }
+str(output)
+```
+
+#Legality
+DON'T PING TOO FAST! Your behavior will will make you sttatistcially distinguishable from human users.
+We need a way to make us look more human. 
+
+Slow down. Add noise to ake your behavior less satistically distinguishable. Know what you're doing and who you're doing it to
+
+robot.text allows you to know if you're doing anything wrong...
+
+You can create noise by randomly putting your scraper to to sleep. 
+
+```{r}
+#one random unit of time drawn from a uniform distrintion
+runif(1,1,4)
+
+#Put the system to sleep by that random unit
+Sys.sleep(runif(1,1,5))
+
+output <- c()
+for(i in 1:length(urls)){
+  Sys.sleep(runif(1,1,5))
+  draw <- bbc_scraper(urls[i])
+  output <- bind_rows(output,draw)
+}
+```
+
+You can wait and everyone will be better off for it. No one is going to die if you don't scrape immediately. 
+
+
+#Application Proogramming Interface (API)
+
+APIs take user requests to a system and reutrn a response (usually in the form of data)
+  - Classic example: Think of a waiter at a restraunt. We give     an order. THey bring you back what you ordered.
+  
+The bost common one we will use is REST APIs. 
+
+Most all APIS require an API key or token to access. There are some r package that make things easier to do this all. 
+
+`httr` is a wa to ask for an api. `GET(api)`
+
