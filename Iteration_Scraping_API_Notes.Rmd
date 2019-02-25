@@ -283,5 +283,9 @@ The bost common one we will use is REST APIs.
 
 Most all APIS require an API key or token to access. There are some r package that make things easier to do this all. 
 
+<<<<<<< HEAD
 `httr` is a wa to ask for an api. `GET(api)`
 
+=======
+`httr` is a wa to ask for an api. `GET(api)`
+>>>>>>> 9e59e27275f7f99747ccc034f17fa167174948c4
